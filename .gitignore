@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local secrets and credentials
+.env
+login.txt
+
+# Tooling
+.pytest_cache/
+.vscode/

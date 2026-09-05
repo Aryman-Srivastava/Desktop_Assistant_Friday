@@ -1,0 +1,8 @@
+pyttsx3
+wikipedia
+youtube-search
+googlesearch-python
+python-dotenv
+sounddevice
+numpy
+faster-whisper

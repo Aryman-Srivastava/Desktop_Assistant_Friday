@@ -1,30 +1,38 @@
-"""
-THIS IS A DESKTOP ASSISTANT CALLED FRIDAY.
-
-**IT IS REQUESTED BY THE USER TO UPDATE THEIR EMAIL LOGIN DETAILS FIRST BY CREATING A TEXT FILE
-login.txt AND CREATING A LIST OF PEOPLE TO WHOM THEY WANT TO MAIL
-
-"""
+"""Windows voice assistant entry point."""
 
 import datetime
 import json
+import logging
 import os
-import pickle
 import random
 import sys
+import numpy as np
+import sounddevice as sd
 from youtube_search import YoutubeSearch
-import speech_recognition as sr
+from faster_whisper import WhisperModel
 import pyttsx3
 import wikipedia
 import webbrowser
 import smtplib
 from googlesearch import search
+from config import (
+    BROWSER_EXECUTABLE,
+    PYCHARM_EXECUTABLE,
+    load_contacts,
+    require_email_credentials,
+)
 
 engine = pyttsx3.init('sapi5')
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[1].id)
-# TYPE THE PATH OF CHROME OR ANY OTHER PREFERRED BROWSER HERE
-url_browser = "C:/Program Files/Google/Chrome/Application/chrome.exe %s"
+
+logging.basicConfig(
+    filename="friday.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
+whisper_model = WhisperModel("base.en", device="cpu", compute_type="int8")
 
 
 def search_google(query2):
@@ -34,57 +42,60 @@ def search_google(query2):
     return links2
 
 
-def cred():
-    f = open("login.txt", 'rb')
-    content3 = pickle.loads(f.read())
-    f.close()
-    return content3
-
-
 def speak(audio):
     engine.say(audio)
     engine.runAndWait()
 
 def takeCommand():
-    # IT TAKES MICROPHONE AS INPUT AND PRINTS STATEMENT
+    """Record five seconds of audio and transcribe it with local Whisper."""
+    sample_rate = 16000
+    duration_seconds = 5
 
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        r.pause_threshold = 1
-        r.energy_threshold = 300
-        r.adjust_for_ambient_noise(source)
-        audio = r.listen(source)
     try:
-        print("Recognizing...")
-        query2 = r.recognize_google(audio, language='en-in')
-        print(f'USER SAID: {query2}\n')
+        print("Listening...")
+        audio_data = sd.rec(
+            int(duration_seconds * sample_rate),
+            samplerate=sample_rate,
+            channels=1,
+            dtype="float32",
+        )
+        sd.wait()
 
-    except Exception as e2:
-        print(e2)
+        print("Recognizing with Whisper...")
+        audio_data = np.squeeze(audio_data)
+        segments, _ = whisper_model.transcribe(audio_data, beam_size=5)
+        query = "".join(segment.text for segment in segments).strip()
+        print(f"USER SAID: {query}\n")
+        return query
+    except (sd.PortAudioError, RuntimeError) as error:
+        logging.warning("Whisper audio capture failed: %s", error)
         speak("SAY THAT AGAIN PLEASE...")
         return None
 
-    return query2
-
 
 def sendEmail(to2, content2):
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.ehlo()
-    server.starttls()
-    content3 = cred()
-    server.login(content3['id'], content3['password'])
-
-    if to2.split()[-1].lower() == "varun":
-        server.sendmail(content3['id'], "varun20259@iiitd.ac.in", content2)
-    elif to2.split()[-1].lower() == "shiv":
-        server.sendmail(content3['id'], "shiv69pnb@gmail.com", content2)
-    elif to2.split()[-1].lower() == "arjun":
-        server.sendmail(content3['id'], "arjun20187@iiitd.ac.in", content2)
-    else:
+    sender, password = require_email_credentials()
+    recipient_name = to2.split()[-1].lower()
+    recipient = load_contacts().get(recipient_name)
+    if recipient is None:
         speak("not in list")
+        return False
 
-    server.close()
+    with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(sender, password)
+        server.sendmail(sender, recipient, content2)
+    return True
+
+
+def open_url(url):
+    """Open a URL with the configured browser or the system default."""
+    if BROWSER_EXECUTABLE:
+        browser = webbrowser.BackgroundBrowser(BROWSER_EXECUTABLE)
+        browser.open(url)
+    else:
+        webbrowser.open(url)
 
 def greetings(string):
     statements = ["Hello, Mr. Aryman", "Hi, Mr. Aryman"]
@@ -94,8 +105,6 @@ def greetings(string):
     return audio
 
 def wishMe():
-
-    
 
     hour = int(datetime.datetime.now().hour)
     if 0 <= hour < 12:
@@ -134,24 +143,15 @@ if __name__ == '__main__':
 
         # OPEN YOUTUBE
         elif "youtube" in query:
-            try:
-                webbrowser.get(url_browser).open("youtube.com")
-            except Exception as e:
-                webbrowser.open("youtube.com")
+            open_url("https://youtube.com")
 
         # OPEN GOOGLE
         elif "google" in query:
-            try:
-                webbrowser.get(url_browser).open("google.com")
-            except Exception as e:
-                webbrowser.open("google.com")
+            open_url("https://google.com")
 
         # OPEN STACKOVERFLOW
         elif "stackoverflow" in query:
-            try:
-                webbrowser.get(url_browser).open("stackoverflow.com")
-            except Exception as e:
-                webbrowser.open("stackoverflow.com")
+            open_url("https://stackoverflow.com")
 
         # PLAY MUSIC USING YOUTUBE
         elif "play" in query:
@@ -164,10 +164,7 @@ if __name__ == '__main__':
             results = json.loads(results)
             url_suffix = results["videos"][0]["url_suffix"]
             url = "https://www.youtube.com/" + url_suffix
-            try:
-                webbrowser.get(url_browser).open(url)
-            except Exception as e:
-                webbrowser.open(url)
+            open_url(url)
 
         # TELL TIME
         elif "time" in query:
@@ -176,8 +173,10 @@ if __name__ == '__main__':
 
         # OPEN PYCHARM
         elif "python" in query:
-            pathDir = "C:\\Program Files\\JetBrains\\PyCharm Community Edition 2020.2.3\\bin\\pycharm64.exe"
-            os.startfile(pathDir)
+            if PYCHARM_EXECUTABLE and os.path.exists(PYCHARM_EXECUTABLE):
+                os.startfile(PYCHARM_EXECUTABLE)
+            else:
+                speak("PyCharm path is not configured")
 
         # SEND EMAIL
         elif "email" in query:
@@ -186,10 +185,13 @@ if __name__ == '__main__':
                 content = takeCommand()
                 speak("to whom should i send the message?")
                 to = takeCommand()
-                sendEmail(to, content)
-                speak("email sent")
-            except Exception as e:
-                print(e)
+                if not content or not to:
+                    speak("I need both a message and a recipient")
+                    continue
+                if sendEmail(to, content):
+                    speak("email sent")
+            except (RuntimeError, OSError, smtplib.SMTPException, ValueError) as error:
+                logging.exception("Email failed: %s", error)
                 speak("sorry the process has been failed")
 
         # SEARCH GOOGLE
@@ -198,10 +200,8 @@ if __name__ == '__main__':
                 continue
             query = query.replace("search", "")
             links = search_google(query)
-            try:
-                webbrowser.get(url_browser).open(str(links[0]))
-            except Exception as e:
-                webbrowser.open(str(links[0]))
+            if links:
+                open_url(str(links[0]))
 
         # FINDING FILE IN OS
         elif 'os' in query.lower():
