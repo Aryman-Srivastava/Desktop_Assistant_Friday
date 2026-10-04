@@ -6,3 +6,5 @@ python-dotenv
 sounddevice
 numpy
 faster-whisper
+pydantic>=2.0.0
+pytest

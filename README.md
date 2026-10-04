@@ -2,6 +2,8 @@
 
 Friday is a Windows voice assistant for web navigation, Wikipedia lookups, YouTube playback, local file opening, and email through Gmail SMTP.
 
+The project has been updated to follow a more AI-engineering-friendly structure by separating configuration, command routing, and intent parsing from the main runtime loop.
+
 ## Setup
 
 1. Create and activate a virtual environment.
@@ -24,9 +26,30 @@ Friday is a Windows voice assistant for web navigation, Wikipedia lookups, YouTu
 
 ```text
 fridayMain.py
-  |-- config.py       environment variables and contacts.json
-	|-- audio           sounddevice recording, faster-whisper STT, and pyttsx3 TTS
-  |-- integrations    Gmail, Wikipedia, Google, YouTube, and Windows actions
+  |-- config.py
+  |-- assistant/
+  |    |-- intent_parser.py   lightweight multilingual intent detection
+  |    |-- router.py          typed command registry / dispatcher
+  |-- contacts.json          name-to-email mapping
+  |-- .env                   local secrets (ignored by git)
 ```
 
-Contacts are maintained in `contacts.json` as a name-to-email mapping. The remaining command loop is intentionally kept in `fridayMain.py` while the later modularization tasks are completed.
+The assistant now follows a command-dispatch model instead of a single long `if/elif` block. Intent parsing is structured, configurable, and easier to replace with an LLM or local model later.
+
+## AI-engineering improvements included
+
+- Secret management through `.env`
+- Contact resolution from `contacts.json`
+- Safe email confirmation before sending
+- Centralized command routing
+- Structured intent parsing for common commands
+- Logging for runtime issues and command failures
+- Unit tests covering configuration loading and intent detection
+
+## Example commands
+
+- "What time is it?"
+- "Search for Python tutorials"
+- "Play deep learning music on YouTube"
+- "Email Shiv with project update"
+- "Exit"
