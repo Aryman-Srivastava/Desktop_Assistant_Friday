@@ -3,69 +3,19 @@
 from __future__ import annotations
 
 import datetime
-import json
 import os
-import smtplib
 import sys
 from typing import Any
 
-import webbrowser
-import wikipedia
-from googlesearch import search
-from youtube_search import YoutubeSearch
-
-from config import (
-    BROWSER_EXECUTABLE,
-    PYCHARM_EXECUTABLE,
-    require_email_credentials,
-    resolve_contact_email,
-)
-from .guardrails import validate_intent, validate_url
+from config import PYCHARM_EXECUTABLE
+from tools.browser import open_url
+from tools.email_tools import send_email_action
+from tools.media_tools import play_youtube_video
+from tools.system_tools import find_file, open_python_app, tell_time
+from tools.web_search import search_google
+from tools.wikipedia_tool import lookup_wikipedia
+from .guardrails import validate_intent
 from .models import ActionResult, AssistantCommand
-
-
-def search_google(query: str, num_results: int = 5) -> list[str]:
-    """Query Google and return the first few result URLs."""
-    links: list[str] = []
-    for result in search(term=query, num_results=num_results, sleep_interval=2, timeout=10):
-        url = str(result)
-        if url:
-            links.append(url)
-    return links
-
-
-def open_url(url: str) -> bool:
-    """Open a URL using the configured browser or default system browser."""
-    if not validate_url(url):
-        return False
-
-    try:
-        if BROWSER_EXECUTABLE:
-            browser = webbrowser.BackgroundBrowser(BROWSER_EXECUTABLE)
-            return bool(browser.open(url))
-        return bool(webbrowser.open(url))
-    except (OSError, webbrowser.Error):
-        return bool(webbrowser.open(url))
-
-
-def send_email_action(recipient_name: str, content: str) -> bool:
-    """Send an email using Gmail app credentials."""
-    sender, password = require_email_credentials()
-    normalized_name = recipient_name.strip().lower()
-    recipient = resolve_contact_email(normalized_name)
-
-    if recipient is None and " " in normalized_name:
-        recipient = resolve_contact_email(normalized_name.split()[-1])
-
-    if recipient is None:
-        return False
-
-    with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(sender, password)
-        server.sendmail(sender, recipient, content)
-    return True
 
 
 def handle_wikipedia_action(command: AssistantCommand) -> ActionResult:
@@ -78,12 +28,9 @@ def handle_wikipedia_action(command: AssistantCommand) -> ActionResult:
         return ActionResult(ok=False, message="What would you like me to look up?")
 
     try:
-        result = wikipedia.summary(topic, sentences=2)
-    except (wikipedia.exceptions.PageError, wikipedia.exceptions.DisambiguationError, ValueError):
-        try:
-            result = wikipedia.summary(topic.replace(" ", ""), sentences=2)
-        except (wikipedia.exceptions.PageError, wikipedia.exceptions.DisambiguationError, ValueError):
-            return ActionResult(ok=False, message="I could not find a matching Wikipedia page.")
+        result = lookup_wikipedia(topic)
+    except Exception:
+        return ActionResult(ok=False, message="I could not find a matching Wikipedia page.")
 
     return ActionResult(ok=True, message=result)
 
@@ -97,16 +44,9 @@ def handle_play_media_action(command: AssistantCommand) -> ActionResult:
     if not query:
         return ActionResult(ok=False, message="What would you like me to play?")
 
-    results = YoutubeSearch(query, max_results=10).to_json()
-    results_data = json.loads(results)
-    videos = results_data.get("videos") or []
-    if not videos:
+    url = play_youtube_video(query)
+    if not url:
         return ActionResult(ok=False, message="I could not find a matching YouTube result.")
-
-    url = "https://www.youtube.com/" + videos[0]["url_suffix"]
-    opened = open_url(url)
-    if not opened:
-        return ActionResult(ok=False, message="I could not open the YouTube link.")
     return ActionResult(ok=True, message="Opening YouTube.", data={"url": url})
 
 
@@ -134,7 +74,7 @@ def handle_time_action(command: AssistantCommand) -> ActionResult:
     if not validation.ok:
         return validation
 
-    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    current_time = tell_time()
     return ActionResult(ok=True, message=f"the time is {current_time}")
 
 
@@ -143,8 +83,7 @@ def handle_python_action(command: AssistantCommand) -> ActionResult:
     if not validation.ok:
         return validation
 
-    if PYCHARM_EXECUTABLE and os.path.exists(PYCHARM_EXECUTABLE):
-        os.startfile(PYCHARM_EXECUTABLE)
+    if open_python_app():
         return ActionResult(ok=True, message="Opening PyCharm.")
     return ActionResult(ok=False, message="PyCharm path is not configured.")
 
@@ -174,10 +113,10 @@ def handle_find_file_action(command: AssistantCommand) -> ActionResult:
     if not query:
         return ActionResult(ok=False, message="What file should I look for?")
 
-    for root, _, files in os.walk("C:"):
-        if query.lower() in [item.lower() for item in files]:
-            os.startfile(os.path.join(root, query))
-            return ActionResult(ok=True, message="Opening file.", data={"file": os.path.join(root, query)})
+    match = find_file(query)
+    if match:
+        os.startfile(match)
+        return ActionResult(ok=True, message="Opening file.", data={"file": match})
 
     return ActionResult(ok=False, message="File not found.")
 

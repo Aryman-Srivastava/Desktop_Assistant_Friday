@@ -31,13 +31,22 @@ Main.py
   |-- assistant/
   |    |-- intent_parser.py  lightweight multilingual intent detection
   |    |-- router.py         typed command registry / dispatcher
+  |    |-- actions.py       action handlers mapped to tool calls
+  |-- tools/
+  |    |-- browser.py        browser integration
+  |    |-- web_search.py     Google search tool
+  |    |-- wikipedia_tool.py Wikipedia lookup tool
+  |    |-- media_tools.py   YouTube playback tool
+  |    |-- email_tools.py   Gmail mail tool
+  |    |-- system_tools.py  time, PyCharm, file lookup tools
+  |    |-- registry.py      tool registry
   |-- resources/
   |    |-- .env              local secrets (ignored by git)
   |    |-- .env.example
   |    |-- contacts.json     name-to-email mapping
 ```
 
-The assistant now follows a command-dispatch model instead of a single long `if/elif` block. Intent parsing is structured, configurable, and easier to replace with an LLM or local model later.
+The assistant now follows a command-dispatch model instead of a single long `if/elif` block. Each Friday capability is exposed as a tool, making it easier to extend with more actions or integrate with an LLM tool-calling layer later.
 
 ## AI-engineering improvements included
 
