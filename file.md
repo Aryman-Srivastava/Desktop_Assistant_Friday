@@ -12,13 +12,13 @@ This document outlines the prioritized tasks for upgrading the Friday Desktop As
 ## Phase 2: Project Packaging & Environment
 - [x] **Dependency Management:** Create a `requirements.txt` or `pyproject.toml` to track dependencies (`SpeechRecognition`, `pyttsx3`, `wikipedia`, etc.).
 - [x] **Git Configuration:** Add a standard Python `.gitignore` file.
-- [x] **Environment Template:** Create `.env.example` documenting required variables without exposing real keys.
+- [x] **Environment Template:** Create `resources/.env.example` documenting required variables without exposing real keys.
 - [x] **Documentation:** Update `README.md` with architecture diagrams, installation steps, and usage examples.
 
 ## Phase 3: Architectural Refactoring
-- [ ] **Modularize Codebase:** Break the monolithic `fridayMain.py` into distinct modules:
-  - `config.py` (configuration and secrets loading)
-  - `audio.py` (TTS and STT handling; Whisper STT is currently wired in `fridayMain.py`)
+- [x] **Modularize Codebase:** Break the monolithic `Main.py` into distinct modules:
+  - `config/` (configuration and secrets loading)
+  - `assistant/` (TTS and STT handling, command dispatch, and tool actions)
   - `router.py` (command parsing and execution)
   - `skills/` or `integrations/` (separate files for Email, Web Search, System OS tasks)
 - [ ] **Command Registry:** Replace the extensive `if/elif` string-matching chain with a structured Command Registry or Dispatcher pattern.

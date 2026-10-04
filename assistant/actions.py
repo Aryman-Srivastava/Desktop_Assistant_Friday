@@ -27,8 +27,10 @@ from .models import ActionResult, AssistantCommand
 def search_google(query: str, num_results: int = 5) -> list[str]:
     """Query Google and return the first few result URLs."""
     links: list[str] = []
-    for result in search(term=query, num_results=num_results, pause=2):
-        links.append(result)
+    for result in search(term=query, num_results=num_results, sleep_interval=2, timeout=10):
+        url = str(result)
+        if url:
+            links.append(url)
     return links
 
 

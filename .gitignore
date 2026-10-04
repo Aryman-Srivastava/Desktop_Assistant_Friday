@@ -6,6 +6,9 @@ venv/
 
 # Local secrets and credentials
 .env
+**/.env
+resources/.env
+!resources/.env.example
 login.txt
 
 # Tooling

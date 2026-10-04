@@ -9,11 +9,28 @@ try:
 except ModuleNotFoundError:
     load_dotenv = None
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-if load_dotenv is not None:
-    load_dotenv(PROJECT_ROOT / ".env")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+RESOURCES_DIR = PROJECT_ROOT / "resources"
+ENV_FILE = RESOURCES_DIR / ".env"
 
-CONTACTS_FILE = PROJECT_ROOT / os.getenv("FRIDAY_CONTACTS_FILE", "contacts.json")
+if load_dotenv is not None and ENV_FILE.exists():
+    load_dotenv(ENV_FILE)
+
+
+def _resolve_path(value: str | None, default: Path) -> Path:
+    if value is None or not value.strip():
+        return default
+
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return candidate
+    return (PROJECT_ROOT / candidate).resolve()
+
+
+CONTACTS_FILE = _resolve_path(
+    os.getenv("FRIDAY_CONTACTS_FILE"),
+    RESOURCES_DIR / "contacts.json",
+)
 BROWSER_EXECUTABLE = os.getenv("FRIDAY_BROWSER_EXECUTABLE", "")
 PYCHARM_EXECUTABLE = os.getenv("FRIDAY_PYCHARM_EXECUTABLE", "")
 GMAIL_ADDRESS = os.getenv("FRIDAY_GMAIL_ADDRESS", "")
@@ -52,6 +69,6 @@ def require_email_credentials() -> tuple[str, str]:
     """Return Gmail credentials or fail with an actionable configuration error."""
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         raise RuntimeError(
-            "Set FRIDAY_GMAIL_ADDRESS and FRIDAY_GMAIL_APP_PASSWORD in .env"
+            "Set FRIDAY_GMAIL_ADDRESS and FRIDAY_GMAIL_APP_PASSWORD in resources/.env"
         )
     return GMAIL_ADDRESS, GMAIL_APP_PASSWORD

@@ -13,25 +13,28 @@ The project has been updated to follow a more AI-engineering-friendly structure 
 	python -m pip install -r requirements.txt
 	```
 
-3. Copy `.env.example` to `.env` and set `FRIDAY_GMAIL_ADDRESS` and `FRIDAY_GMAIL_APP_PASSWORD`.
-4. Use a Gmail App Password, not the normal Gmail account password. Keep `.env` private.
+3. Copy `resources/.env.example` to `resources/.env` and set `FRIDAY_GMAIL_ADDRESS` and `FRIDAY_GMAIL_APP_PASSWORD`.
+4. Use a Gmail App Password, not the normal Gmail account password. Keep `resources/.env` private.
 5. Adjust `FRIDAY_BROWSER_EXECUTABLE` and `FRIDAY_PYCHARM_EXECUTABLE` if those applications are installed outside their usual locations.
 6. Start Friday:
 
 	```powershell
-	python fridayMain.py
+	python Main.py
 	```
 
 ## Architecture
 
 ```text
-fridayMain.py
-  |-- config.py
+Main.py
+  |-- config/
+  |    |-- __init__.py       configuration loading and contact resolution
   |-- assistant/
-  |    |-- intent_parser.py   lightweight multilingual intent detection
-  |    |-- router.py          typed command registry / dispatcher
-  |-- contacts.json          name-to-email mapping
-  |-- .env                   local secrets (ignored by git)
+  |    |-- intent_parser.py  lightweight multilingual intent detection
+  |    |-- router.py         typed command registry / dispatcher
+  |-- resources/
+  |    |-- .env              local secrets (ignored by git)
+  |    |-- .env.example
+  |    |-- contacts.json     name-to-email mapping
 ```
 
 The assistant now follows a command-dispatch model instead of a single long `if/elif` block. Intent parsing is structured, configurable, and easier to replace with an LLM or local model later.

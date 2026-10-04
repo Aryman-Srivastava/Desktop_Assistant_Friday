@@ -9,7 +9,7 @@ import os
 import random
 import smtplib
 import sys
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pyttsx3
@@ -31,8 +31,11 @@ from config import (
 )
 
 engine = pyttsx3.init("sapi5")
-voices = engine.getProperty("voices")
-engine.setProperty("voice", voices[1].id)
+voices = cast(list[Any], engine.getProperty("voices") or [])
+if not voices:
+    raise RuntimeError("No speech voices were detected from pyttsx3.")
+voice = voices[1] if len(voices) > 1 else voices[0]
+engine.setProperty("voice", voice.id)
 
 logging.basicConfig(
     filename="friday.log",
@@ -46,7 +49,7 @@ whisper_model = WhisperModel("base.en", device="cpu", compute_type="int8")
 def search_google(query2: str, num_results: int = 5) -> list[str]:
     """Query Google and return the first few result URLs."""
     links2 = []
-    for j in search(term=query2, num_results=num_results, pause=2):
+    for j in search(term=query2, num_results=num_results, sleep_interval=2, timeout=10):
         links2.append(j)
     return links2
 
